@@ -115,13 +115,16 @@ pthread_cond_t disk_cond;	/* for synchronizing disk and jack */
 pthread_mutex_t disk_mutex;	/* mutex protecting disk_cond */
 jack_client_t *jclient;		/* Jack client */
 
+int parse_args(int argc, char **argv, struct config *c);
 void set_signal_handler();
 void start_io(struct config *c);
 void stop_io(struct config *c);
 void usage();
 void help();
+int setup_jack(struct config *c);
 void cleanup_jack();
 
+int
 main(int argc, char **argv)
 {
 	struct config config;
@@ -286,6 +289,9 @@ jack_capture_callback(jack_nframes_t nframes, void *arg)
 
 	/* arg is callback data */
 	cbd = (struct callbackdata *)arg;
+	if (cbd->ready == 0) {
+		return(0);
+	}
 
 	nports = cbd->cfg->ports;
 
@@ -331,6 +337,9 @@ jack_playback_callback(jack_nframes_t nframes, void *arg)
 
 	/* arg is callback data */
 	cbd = (struct callbackdata *)arg;
+	if (cbd->ready == 0) {
+		return(0);
+	}
 
 	nports = cbd->cfg->ports;
 
@@ -396,7 +405,7 @@ setup_jack(struct config *c)
 	jclient = jack_client_open(clientname, 0, &jackstatus);
 	if (jclient == NULL) {
 		fprintf(stderr, "Error from jack_client_open\n");
-		return;
+		return(1);
 	}
 
 	switch (c->io) {
